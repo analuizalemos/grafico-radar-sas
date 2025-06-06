@@ -2,9 +2,9 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <!-- Os scripts do SAS foram comentados para evitar erros 404 ao testar localmente. -->
-  <!-- <script type="text/javascript" src="../../util/messagingUtil.js"></script> -->
-  <!-- <script type="text/javascript" src="../../util/contentUtil.js"></script> -->
+  <!-- Estes scripts serão carregados no SAS VA. Eles resultarão num erro 404 (inofensivo) ao testar localmente. -->
+  <script type="text/javascript" src="../../util/messagingUtil.js"></script>
+  <script type="text/javascript" src="../../util/contentUtil.js"></script>
 </head>
 <body>
 
@@ -60,7 +60,7 @@
     dominant-baseline: hanging;
   }
 
-  /* Estilos para o Tooltip (reaproveitados do original) */
+  /* Estilos para o Tooltip */
   .d3-tip {
     background: white;
     padding: 6px;
@@ -77,32 +77,6 @@
   }
 </style>
 
-<!-- Bloco de script para simular o objeto 'va' do SAS -->
-<script>
-  // Este objeto 'va' simula o ambiente do SAS para que o código possa rodar fora dele.
-  // Ele fornece as funções mínimas para evitar o erro "va is not defined".
-  var va = {
-    messagingUtil: {
-      setOnDataReceivedCallback: function(callback) {
-        // Esta função agora será chamada pelo nosso código principal.
-        // Em um ambiente real do SAS, o SAS chamaria isso com dados reais.
-        window.sasUpdateData = callback;
-      }
-    },
-    contentUtil: {
-      setupResizeListener: function(callback) {
-        // Simula o listener de redimensionamento
-        window.addEventListener('resize', callback);
-      },
-      validateRoles: function() {
-        // Para testes locais, sempre consideramos os dados válidos.
-        return true;
-      }
-    }
-  };
-</script>
-
-
 <script type="module">
 "use strict";
 
@@ -111,113 +85,91 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 /******************************************************* Declare variables *******************************************************/
 
-// Static data variables
-const SVG_ID = "radar"; // ID of SVG element
+const SVG_ID = "radar"; 
 const SAMPLE_MESSAGE = {
   version: "1",
   resultName: "dd55",
   rowCount: 18,
   availableRowCount: 18,
   data: [
-    ["Hybrid", "Cylinders", 3.6666666666666665, "BEST12.2"],
-    ["Hybrid", "MPG (City)", 55, "BEST12.2"],
-    ["Hybrid", "MSRP", 19920, "DOLLAR12.2"],
-    ["Sedan", "Cylinders", 5.580152671755725, "BEST12.2"],
-    ["Sedan", "MPG (City)", 21.083969465648856, "BEST12.2"],
-    ["Sedan", "MSRP", 29773.618320610687, "DOLLAR12.2"],
-    ["Sports", "Cylinders", 6.340425531914893, "BEST12.2"],
-    ["Sports", "MPG (City)", 18.408163265306122, "BEST12.2"],
-    ["Sports", "MSRP", 53387.06122448979, "DOLLAR12.2"],
-    ["SUV", "Cylinders", 6.566666666666666, "BEST12.2"],
-    ["SUV", "MPG (City)", 16.1, "BEST12.2"],
-    ["SUV", "MSRP", 34790.25, "DOLLAR12.2"],
-    ["Truck", "Cylinders", 6.25, "BEST12.2"],
-    ["Truck", "MPG (City)", 16.5, "BEST12.2"],
-    ["Truck", "MSRP", 24941.375, "DOLLAR12.2"],
-    ["Wagon", "Cylinders", 5.3, "BEST12.2"],
-    ["Wagon", "MPG (City)", 21.1, "BEST12.2"],
-    ["Wagon", "MSRP", 28840.533333333333, "DOLLAR12.2"]
+    ["Hybrid", "Cylinders", 3.66, "BEST12.2"],["Hybrid", "MPG (City)", 55, "BEST12.2"],["Hybrid", "MSRP", 19920, "DOLLAR12.2"],
+    ["Sedan", "Cylinders", 5.58, "BEST12.2"],["Sedan", "MPG (City)", 21.08, "BEST12.2"],["Sedan", "MSRP", 29773.61, "DOLLAR12.2"],
+    ["Sports", "Cylinders", 6.34, "BEST12.2"],["Sports", "MPG (City)", 18.40, "BEST12.2"],["Sports", "MSRP", 53387.06, "DOLLAR12.2"],
+    ["SUV", "Cylinders", 6.56, "BEST12.2"],["SUV", "MPG (City)", 16.1, "BEST12.2"],["SUV", "MSRP", 34790.25, "DOLLAR12.2"],
+    ["Truck", "Cylinders", 6.25, "BEST12.2"],["Truck", "MPG (City)", 16.5, "BEST12.2"],["Truck", "MSRP", 24941.37, "DOLLAR12.2"],
+    ["Wagon", "Cylinders", 5.3, "BEST12.2"],["Wagon", "MPG (City)", 21.1, "BEST12.2"],["Wagon", "MSRP", 28840.53, "DOLLAR12.2"]
   ],
   columns: [
-    { name: "bi173", label: "Type", type: "string" },
-    { name: "bi174", label: "Metric", type: "string" },
-    { name: "bi175", label: "Measure", type: "number", usage: "quantitative", aggregation: "sum", format: { name: "BEST", width: 12, precision: 0, formatString: "BEST12." } },
-    { name: "bi176", label: "Format", type: "string" }
+    { name: "bi173", label: "Type", type: "string" }, { name: "bi174", label: "Metric", type: "string" },
+    { name: "bi175", label: "Measure", type: "number"}, { name: "bi176", label: "Format", type: "string" }
   ]
-}; // Sample data message to render graph outside of VA for debugging
+};
 const OPACITY = {
   fill: { focus: 0.6, default: 0.2, unfocus: 0.1 },
   stroke: { focus: 1, default: 0.6, unfocus: 0.2 }
-}; // Various opacity values used during rendering
+}; 
 
-// Dynamic data variables
-let VA_MESSAGE; // Data message to be received from VA
-let VA_RESULT_NAME; // Result name required to send messages back to VA
-let DATA; // Data to be parsed from VA data message
-let OLD_DATA; // Data from previous render to track duplicate point
-let METADATA = []; // Metadata to be parsed from VA data message
-let OLD_METADATA; // Metadata from previous render to track duplicate point
-let SELECTED_CATEGORY; // Currently selected category
-let LAST_TRANSITION_END = Date.now(); // Time of last transition used to time transition callbacks
+let VA_MESSAGE, VA_RESULT_NAME, DATA, OLD_DATA, METADATA = [], OLD_METADATA, SELECTED_CATEGORY;
+let LAST_TRANSITION_END = Date.now(); 
 
-// Static dimension variables
-const TRANS_TIME = 500; // Duration of major transitions
-const TRANS_DELAY = 20; // Small buffer to ensure all callbacks have finished before allowing new transition
-const HOVER_TRANS_TIME = 100; // Duration of focus transitions
-const ENTER_REMOVE_TRANS_TIME = 200; // Duration of enter and exit transitions for data points and grid lines
-const MEASURE_LABEL_PADDING = 10; // Padding between edge of radar chart and measure labels
+const TRANS_TIME = 500, TRANS_DELAY = 20, HOVER_TRANS_TIME = 100, ENTER_REMOVE_TRANS_TIME = 200, MEASURE_LABEL_PADDING = 10;
+let WIDTH, HEIGHT, RADIUS, OLD_RADIUS, DELTA_ANGLE, TOP_PAD, SIDE_PAD;
 
-// Dynamic dimension variables
-let WIDTH; // Width of SVG element
-let HEIGHT; // Height of SVG element
-let RADIUS; // Radius of radar chart
-let OLD_RADIUS; // Previous radius of chart used for tweening height changes
-let DELTA_ANGLE; // Angle in radians between each measure on circle
-let TOP_PAD; // Vertical padding for measure labels
-let SIDE_PAD; // Horizontal padding for measure labels
+const SCALED_FORMAT = d3.format("3.0f"); 
+d3.selection.prototype.moveToFront = function() { return this.each(function() { this.parentNode.appendChild(this); }); };
+let SVG, G_CHART_AREA, G_GRID, GRID_LINES, GRID_CIRCLES, MEASURE_LABELS, DATA_PATHS, DATA_POINTS;
 
-// Selection and d3 variables
-const SCALED_FORMAT = d3.format("3.0f"); // Format for scaled version of measure displayed in tooltip
-d3.selection.prototype.moveToFront = function() {
-  return this.each(function() {
-    this.parentNode.appendChild(this);
-  });
-}; // Bring element to front of SVG (from https://github.com/wbkd/d3-extended)
-let SVG; // SVG selection
-let G_CHART_AREA; // Chart area group selection
-let G_GRID; // Grid lines group selection
-let GRID_LINES; // Grid lines data-join
-let GRID_CIRCLES; // Grid circles data-join
-let MEASURE_LABELS; // Measure labels data-join
-let DATA_PATHS; // Data paths data-join
-let DATA_POINTS; // Data points data-join
-
-// Legend variables
 const LEG = {
   topPad: 20, titlePad: 5, rowPad: 3, rectWidth: 12, rectPad: 5, textPad: 5,
   title: undefined, data: undefined, elPos: undefined, height: undefined,
   groupSelection: undefined, titleDataJoin: undefined, groupDataJoin: undefined
 };
 
-// Tooltip variables
 const TOOLTIP = d3.select("#tooltip");
 
-// Gradient variables
 const GRAD = {
   fill: { Hybrid: "#21b9b7", Sedan: "#4141e0", Sports: "#7db71a", SUV: "#8e2f8a", Truck: "#d38506", Wagon: "#0abf85" },
   stroke: { Hybrid: "#1d9992", Sedan: "#2222bc", Sports: "#6a9617", SUV: "#6d256d", Truck: "#ba7006", Wagon: "#0a9e69" },
-  fillScale: d3.scaleOrdinal(["#245B12", "#00923F", "#84C225", "#8e2f8a", "#d38506", "#0abf85", "#2f90ec", "#db3851", "#61F9F7", "#8181FF", "#BDF75A", "#CE6FCA", "#FFC546", "#4AFFC5", "#6FD0FF", "#FF7891", "#007977", "#0101A0", "#3D7700", "#4E004A", "#934500", "#007F45", "#0050AC", "#9B0011"]),
-  strokeScale: d3.scaleOrdinal(["#1d9992", "#2222bc", "#6a9617", "#6d256d", "#ba7006", "#0a9e69", "#07689e", "#a50a2f", "#5DD9D2", "#6262FC", "#AAD657", "#AD65AD", "#FAB046", "#4ADEA9", "#47A8DE", "#E54A6F", "#005952", "#00007C", "#2A5600", "#2D002D", "#7A3000", "#005E29", "#00285E", "#650000"]),
+  fillScale: d3.scaleOrdinal(d3.schemeCategory10),
+  strokeScale: d3.scaleOrdinal(d3.schemeCategory10),
   data: undefined, defsSelection: undefined, gradsDataJoin: undefined
 };
 
-/*************************************************** Setup Callback Functions ***************************************************/
-va.messagingUtil.setOnDataReceivedCallback(handleCallback);
-if (!inIframe()) { 
-  // O código agora chamará a função global que definimos no nosso objeto 'va' simulado
-  window.sasUpdateData(SAMPLE_MESSAGE);
+
+/*************************************************** Setup and Env Detection ***************************************************/
+// Deteta se estamos fora do SAS VA e cria um objeto 'va' simulado
+if (typeof va === 'undefined') {
+  console.log("Ambiente SAS VA não detetado. A executar em modo de teste local com dados de exemplo.");
+  
+  // Cria um objeto 'va' global para simulação
+  window.va = {
+    messagingUtil: {
+      setOnDataReceivedCallback: function(callback) {
+        // Em modo local, chama imediatamente o callback com os dados de exemplo.
+        callback(SAMPLE_MESSAGE);
+      },
+      postInstructionalMessage: function(msg) {
+        // Em modo local, exibe mensagens de instrução no console.
+        console.warn("Mensagem de Instrução para o SAS:", msg);
+      }
+    },
+    contentUtil: {
+      setupResizeListener: function(callback) {
+        // Adiciona um listener de redimensionamento da janela para testes locais.
+        window.addEventListener('resize', callback);
+      },
+      validateRoles: function() {
+        // Assume que as funções de dados são sempre válidas para testes.
+        return true;
+      }
+    }
+  };
 }
+
+// As funções do 'va' agora virão dos scripts do SAS ou do nosso objeto simulado.
+va.messagingUtil.setOnDataReceivedCallback(handleCallback);
 va.contentUtil.setupResizeListener(drawElements);
+
 
 /****************************************************** Callback Functions ******************************************************/
 function handleCallback(messageFromVA) {
@@ -231,49 +183,67 @@ function handleCallback(messageFromVA) {
 }
 
 function onDataReceived(messageFromVA) {
+  if (!messageFromVA || !messageFromVA.data || messageFromVA.data.length === 0) {
+    // Não processa se não houver dados, importante para o SAS VA.
+    return;
+  }
+
   VA_MESSAGE = messageFromVA;
   VA_RESULT_NAME = messageFromVA.resultName;
 
   if (!va.contentUtil.validateRoles(messageFromVA, ["string", "string", "number", "string"], ["number"])) {
-    // Esta mensagem agora aparecerá no console do navegador
-    console.error("D3 Radar Chart expects columns to be assigned in this order:\n 1. Category (string)\n 2. Metric Name (string)\n 3. Metric Value (number)\n 4. Metric Format (string)");
+    va.messagingUtil.postInstructionalMessage(VA_RESULT_NAME, "D3 Radar Chart expects columns to be assigned in this order:\n 1. Category (string)\n 2. Metric Name (string)\n 3. Metric Value (number)\n 4. Metric Format (string)");
     return;
   }
   
   const nestedData = Array.from(d3.group(VA_MESSAGE.data, d => d[1]), ([key, values]) => ({ key, values }));
   const numMeasures = nestedData.length;
 
+  if (numMeasures === 0) return; // Sai se não houver métricas para desenhar
+
   OLD_METADATA = METADATA;
   DELTA_ANGLE = (2 * Math.PI) / numMeasures;
   METADATA = { category: VA_MESSAGE.columns[0].label, metrics: {} };
   for (let i = 0; i < numMeasures; i++) {
-    METADATA.metrics[nestedData[i].key] = {
-      metric: nestedData[i].key,
+    const key = nestedData[i].key;
+    const formatValue = nestedData[i].values[0][3]; // Pega o formato da primeira linha para esta métrica
+    METADATA.metrics[key] = {
+      metric: key,
       angle: i * DELTA_ANGLE,
-      format: translateFormat(VA_MESSAGE.data[i][3]),
-      maximum: d3.max(VA_MESSAGE.data, d => (d[1] == nestedData[i].key ? d[2] : Number.MIN_VALUE))
+      format: translateFormat(formatValue),
+      maximum: d3.max(VA_MESSAGE.data, d => (d[1] == key ? d[2] : -Infinity))
     };
   }
 
   let datum, metric;
   OLD_DATA = DATA;
   DATA = [];
-  for (let i = 0; i < VA_MESSAGE.data.length / numMeasures; i++) {
-    datum = {
-      category: VA_MESSAGE.data[i * numMeasures][0],
-      id: "id-" + VA_MESSAGE.data[i * numMeasures][0].replace(/[\W]/g, "_"),
-      metrics: []
-    };
-    for (let j = 0; j < numMeasures; j++) {
-      metric = {
-        metric: VA_MESSAGE.data[i * numMeasures + j][1],
-        measure: VA_MESSAGE.data[i * numMeasures + j][2],
-        scaledMeasure: VA_MESSAGE.data[i * numMeasures + j][2] / METADATA.metrics[VA_MESSAGE.data[i * numMeasures + j][1]].maximum
+  const categories = Array.from(d3.group(VA_MESSAGE.data, d => d[0]).keys());
+  
+  categories.forEach(categoryValue => {
+      datum = {
+          category: categoryValue,
+          id: "id-" + String(categoryValue).replace(/[\W]/g, "_"),
+          metrics: []
       };
-      datum.metrics.push(metric);
-    }
-    DATA.push(datum);
-  }
+      
+      const categoryData = VA_MESSAGE.data.filter(d => d[0] === categoryValue);
+      
+      for(const metricName in METADATA.metrics) {
+          const metricData = categoryData.find(d => d[1] === metricName);
+          if (metricData) {
+              const measure = metricData[2];
+              const scaledMeasure = METADATA.metrics[metricName].maximum > 0 ? (measure / METADATA.metrics[metricName].maximum) : 0;
+              metric = {
+                  metric: metricName,
+                  measure: measure,
+                  scaledMeasure: scaledMeasure
+              };
+              datum.metrics.push(metric);
+          }
+      }
+      DATA.push(datum);
+  });
 
   LEG.title = METADATA.category;
   LEG.data = DATA.map(d => ({ key: d.category, id: d.id }));
@@ -288,23 +258,21 @@ function onDataReceived(messageFromVA) {
 
 function drawElements() {
   if (!DATA) return;
+  d3.select("#" + SVG_ID).remove(); // Limpa o SVG anterior para um novo desenho
   WIDTH = document.body.clientWidth;
   HEIGHT = document.body.clientHeight;
 
-  d3.select("body").selectAll("#" + SVG_ID).data([DATA]).enter().append("svg").attr("id", SVG_ID).on("click", legendDeselectAll);
-  SVG = d3.select("#" + SVG_ID);
-  SVG.selectAll(".gradient-defs").data([DATA]).enter().append("defs").classed("gradient-defs", true);
+  SVG = d3.select("body").append("svg").attr("id", SVG_ID).attr("width", WIDTH).attr("height", HEIGHT).on("click", legendDeselectAll);
+  SVG.append("defs").classed("gradient-defs", true);
   GRAD.defsSelection = SVG.select(".gradient-defs");
   defineGradients();
   calculatePadding();
   calculateLegendDimensions();
   drawLegend();
   OLD_RADIUS = RADIUS;
-  RADIUS = Math.min(WIDTH - 2 * SIDE_PAD, HEIGHT - LEG.height - 2 * TOP_PAD) / 2;
-  SVG.selectAll(".g-chart-area").data([DATA]).enter().append("g").classed("g-chart-area", true);
-  G_CHART_AREA = SVG.select(".g-chart-area").attr("transform", "translate(" + WIDTH / 2 + ", " + (TOP_PAD + RADIUS) + ")");
-  G_CHART_AREA.selectAll(".g-grid").data([DATA]).enter().append("g").classed("g-grid", true);
-  G_GRID = G_CHART_AREA.select(".g-grid");
+  RADIUS = Math.max(Math.min(WIDTH - 2 * SIDE_PAD, HEIGHT - LEG.height - 2 * TOP_PAD) / 2, 0);
+  G_CHART_AREA = SVG.append("g").classed("g-chart-area", true).attr("transform", "translate(" + WIDTH / 2 + ", " + (TOP_PAD + RADIUS) + ")");
+  G_GRID = G_CHART_AREA.append("g").classed("g-grid", true);
 
   GRID_LINES = G_GRID.selectAll(".grid-line").data(Object.values(METADATA.metrics), d => d.metric);
   GRID_LINES.enter().append("line").classed("grid-line", true).attr("stroke", "#C4C4C4").attr("data-angle", d => d.angle).attr("x1", 0).attr("y1", 0).merge(GRID_LINES).attr("x2", d => RADIUS * Math.sin(d.angle)).attr("y2", d => -RADIUS * Math.cos(d.angle));
@@ -315,11 +283,11 @@ function drawElements() {
   MEASURE_LABELS = G_CHART_AREA.selectAll(".measure-label").data(Object.values(METADATA.metrics), d => d.metric);
   MEASURE_LABELS.enter().append("text").classed("measure-label", true).text(d => d.metric).attr("data-angle", d => d.angle)
     .attr("dx", function(d) { return (d.angle == 0 || d.angle == Math.PI) ? -this.getBBox().width / 2 + "px" : (d.angle > 0 && d.angle < Math.PI) ? "0px" : -this.getBBox().width + "px"; })
-    .attr("dy", function(d) { return (d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2) ? -this.getBBox().height / 2 + "px" : (d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2) ? "0px" : -this.getBBox().height + "px"; })
+    .attr("dy", function(d) { return d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2 ? -this.getBBox().height / 2 + "px" : (d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2) ? "0px" : -this.getBBox().height + "px"; })
     .merge(MEASURE_LABELS).attr("x", d => (RADIUS + MEASURE_LABEL_PADDING) * Math.sin(d.angle)).attr("y", d => -(RADIUS + MEASURE_LABEL_PADDING) * Math.cos(d.angle));
 
   DATA_PATHS = G_CHART_AREA.selectAll(".data-path").data(DATA, d => d.category);
-  DATA_PATHS.enter().append("path").classed("data-path", true).attr("id", d => d.category + "-path")
+  DATA_PATHS.enter().append("path").classed("data-path", true).attr("id", d => "path-" + d.id)
     .attr("fill", d => GRAD.fill[d.category] ? GRAD.fill[d.category] : GRAD.fillScale(d.category))
     .attr("fill-opacity", d => getOpacity(d.category, OPACITY.fill))
     .attr("stroke", d => GRAD.stroke[d.category] ? GRAD.stroke[d.category] : GRAD.strokeScale(d.category))
@@ -330,15 +298,21 @@ function drawElements() {
 function getPath(dPath) {
   const points = [];
   let path = "M ";
-  for (let j = 0; j < dPath.metrics.length; j++) {
-    const x = RADIUS * dPath.metrics[j].scaledMeasure * Math.sin(j * DELTA_ANGLE);
-    const y = -RADIUS * dPath.metrics[j].scaledMeasure * Math.cos(j * DELTA_ANGLE);
-    points.push({ category: dPath.category, metric: dPath.metrics[j].metric, measure: dPath.metrics[j].measure, scaledMeasure: dPath.metrics[j].scaledMeasure, x: x, y: y });
-    path += `${x},${y}${j === dPath.metrics.length - 1 ? " Z" : " L "}`;
+  const metricsOrder = Object.keys(METADATA.metrics);
+  for (let j = 0; j < metricsOrder.length; j++) {
+    const metricName = metricsOrder[j];
+    const metricData = dPath.metrics.find(m => m.metric === metricName);
+    const scaledValue = metricData ? metricData.scaledMeasure : 0;
+    const angle = METADATA.metrics[metricName].angle;
+
+    const x = RADIUS * scaledValue * Math.sin(angle);
+    const y = -RADIUS * scaledValue * Math.cos(angle);
+    points.push({ category: dPath.category, id: dPath.id, ...metricData, x: x, y: y });
+    path += `${x},${y}${j === metricsOrder.length - 1 ? " Z" : " L "}`;
   }
 
-  DATA_POINTS = G_CHART_AREA.selectAll(".data-point").filter(d => dPath.category == d.category).data(points, d => d.metric);
-  DATA_POINTS.enter().append("circle").classed("data-point", true)
+  DATA_POINTS = G_CHART_AREA.selectAll(".data-point-" + dPath.id).data(points, d => d.metric);
+  DATA_POINTS.enter().append("circle").attr("class", "data-point-" + dPath.id)
     .attr("fill", GRAD.fill[dPath.category] ? GRAD.fill[dPath.category] : GRAD.fillScale(dPath.category))
     .attr("fill-opacity", getOpacity(dPath.category, OPACITY.stroke))
     .on("mouseover", (event, d) => {
@@ -353,88 +327,55 @@ function getPath(dPath) {
 }
 
 function updateElements() {
-  calculatePadding(); defineGradients(); calculateLegendDimensions(); updateLegend();
-  OLD_RADIUS = RADIUS;
-  RADIUS = Math.min(WIDTH - 2 * SIDE_PAD, HEIGHT - LEG.height - 2 * TOP_PAD) / 2;
-  G_CHART_AREA.transition().duration(TRANS_TIME).attr("transform", "translate(" + WIDTH / 2 + ", " + (TOP_PAD + RADIUS) + ")");
+    if (!DATA) return;
+    WIDTH = document.body.clientWidth;
+    HEIGHT = document.body.clientHeight;
+    SVG.attr("width", WIDTH).attr("height", HEIGHT);
+    
+    calculatePadding(); defineGradients(); calculateLegendDimensions(); updateLegend();
+    
+    OLD_RADIUS = RADIUS;
+    RADIUS = Math.max(Math.min(WIDTH - 2 * SIDE_PAD, HEIGHT - LEG.height - 2 * TOP_PAD) / 2, 0);
 
-  GRID_LINES = G_GRID.selectAll(".grid-line").data(Object.values(METADATA.metrics), d => d.metric);
-  GRID_LINES.transition().duration(TRANS_TIME).attrTween("x2", function(d) { return xTween(OLD_RADIUS, RADIUS, OLD_METADATA.metrics[d.metric].angle, d.angle); }).attrTween("y2", function(d) { return yTween(OLD_RADIUS, RADIUS, OLD_METADATA.metrics[d.metric].angle, d.angle); });
-  GRID_LINES.enter().append("line").classed("grid-line", true).attr("stroke", "#C4C4C4").attr("data-angle", d => d.angle).attr("x1", 0).attr("y1", 0).attr("x2", d => RADIUS * Math.sin(d.angle)).attr("y2", d => -RADIUS * Math.cos(d.angle)).style("opacity", 0).transition().delay(TRANS_TIME - ENTER_REMOVE_TRANS_TIME).duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 1);
-  GRID_LINES.exit().transition().duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 0).remove();
+    G_CHART_AREA.transition().duration(TRANS_TIME).attr("transform", "translate(" + WIDTH / 2 + ", " + (TOP_PAD + RADIUS) + ")");
 
-  GRID_CIRCLES = G_GRID.selectAll(".grid-circle").data([0.2,0.4,0.6,0.8,1]).transition().duration(TRANS_TIME).attr("r", d => d * RADIUS);
+    GRID_LINES = G_GRID.selectAll(".grid-line").data(Object.values(METADATA.metrics), d => d.metric);
+    GRID_LINES.transition().duration(TRANS_TIME).attrTween("x2", function(d) { return xTween(OLD_RADIUS, RADIUS, OLD_METADATA.metrics[d.metric].angle, d.angle); }).attrTween("y2", function(d) { return yTween(OLD_RADIUS, RADIUS, OLD_METADATA.metrics[d.metric].angle, d.angle); });
+    GRID_LINES.enter().append("line").classed("grid-line", true).attr("stroke", "#C4C4C4").attr("data-angle", d => d.angle).attr("x1", 0).attr("y1", 0).attr("x2", d => RADIUS * Math.sin(d.angle)).attr("y2", d => -RADIUS * Math.cos(d.angle)).style("opacity", 0).transition().delay(TRANS_TIME - ENTER_REMOVE_TRANS_TIME).duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 1);
+    GRID_LINES.exit().transition().duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 0).remove();
 
-  MEASURE_LABELS = G_CHART_AREA.selectAll(".measure-label").data(Object.values(METADATA.metrics), d => d.metric);
-  MEASURE_LABELS.transition().duration(TRANS_TIME)
-    .attr("dx", function(d) { return d.angle == 0 || d.angle == Math.PI ? -this.getBBox().width / 2 + "px" : d.angle > 0 && d.angle < Math.PI ? "0px" : -this.getBBox().width + "px"; })
-    .attr("dy", function(d) { return d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2 ? -this.getBBox().height / 2 + "px" : d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2 ? "0px" : -this.getBBox().height + "px"; })
-    .attrTween("x", function(d) { return xTween(OLD_RADIUS + MEASURE_LABEL_PADDING, RADIUS + MEASURE_LABEL_PADDING, OLD_METADATA.metrics[d.metric].angle, d.angle); })
-    .attrTween("y", function(d) { return yTween(OLD_RADIUS + MEASURE_LABEL_PADDING, RADIUS + MEASURE_LABEL_PADDING, OLD_METADATA.metrics[d.metric].angle, d.angle); });
-  MEASURE_LABELS.enter().append("text").classed("measure-label", true).text(d => d.metric)
-    .attr("dx", function(d) { return d.angle == 0 || d.angle == Math.PI ? -this.getBBox().width / 2 + "px" : d.angle > 0 && d.angle < Math.PI ? "0px" : -this.getBBox().width + "px"; })
-    .attr("dy", function(d) { return d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2 ? -this.getBBox().height / 2 + "px" : d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2 ? "0px" : -this.getBBox().height + "px"; })
-    .attr("x", d => (RADIUS + MEASURE_LABEL_PADDING) * Math.sin(d.angle)).attr("y", d => -(RADIUS + MEASURE_LABEL_PADDING) * Math.cos(d.angle))
-    .style("opacity", 0).transition().delay(TRANS_TIME - ENTER_REMOVE_TRANS_TIME).duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 1);
-  MEASURE_LABELS.exit().transition().duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 0).remove();
+    GRID_CIRCLES = G_GRID.selectAll(".grid-circle").data([0.2,0.4,0.6,0.8,1]).transition().duration(TRANS_TIME).attr("r", d => d * RADIUS);
 
-  DATA_PATHS = G_CHART_AREA.selectAll(".data-path").data(DATA, d => d.category);
-  DATA_PATHS.attr("fill", d => GRAD.fill[d.category] ? GRAD.fill[d.category] : GRAD.fillScale(d.category)).attr("stroke", d => GRAD.stroke[d.category] ? GRAD.stroke[d.category] : GRAD.strokeScale(d.category)).each(function(d, i) {
-      const oldMetrics = Object.values(OLD_METADATA.metrics), metrics = Object.values(METADATA.metrics);
-      const oldDelta = oldMetrics[1] ? oldMetrics[1].angle : Math.PI;
-      d.entered = oldMetrics.length < metrics.length;
-      for (let j = 0; j < Math.max(oldMetrics.length, metrics.length); j++) { if (!oldMetrics[j] || !metrics[j] || oldMetrics[j].metric != metrics[j].metric) { d.changedIndex = j; break; } }
-      if (d.entered) {
-        d3.select(this).attr("d", d => {
-          const oldData = OLD_DATA[i].metrics;
-          let path = d.changedIndex == 0 ? "M 0," + -RADIUS * oldData[0].scaledMeasure + " L " : "M ";
-          for (let j = 0; j < oldData.length; j++) {
-            if (d.changedIndex == j + 1) { path += `${RADIUS * oldData[j].scaledMeasure * Math.sin(j * oldDelta)},${-RADIUS * oldData[j].scaledMeasure * Math.cos(j * oldDelta)} L `; }
-            path += `${RADIUS * oldData[j].scaledMeasure * Math.sin(j * oldDelta)},${-RADIUS * oldData[j].scaledMeasure * Math.cos(j * oldDelta)}${j == oldData.length - 1 ? " Z" : " L "}`;
-          }
-          return path;
-        });
-      }
-  }).transition().duration(TRANS_TIME).attr("d", function(d) {
-      const dPath = d;
-      const points = [];
-      let path = "M ";
-      for (let j = 0; j < dPath.metrics.length; j++) {
-        if ((!d.entered && d.changedIndex == j) || (j == dPath.metrics.length - 1 && d.changedIndex == dPath.metrics.length)) { path += `${RADIUS * dPath.metrics[j % dPath.metrics.length].scaledMeasure * Math.sin(j % dPath.metrics.length * DELTA_ANGLE)},${-RADIUS * dPath.metrics[j % dPath.metrics.length].scaledMeasure * Math.cos(j % dPath.metrics.length * DELTA_ANGLE)} L `; }
-        const x = RADIUS * dPath.metrics[j].scaledMeasure * Math.sin(j * DELTA_ANGLE), y = -RADIUS * dPath.metrics[j].scaledMeasure * Math.cos(j * DELTA_ANGLE);
-        points.push({ category: dPath.category, metric: dPath.metrics[j].metric, measure: dPath.metrics[j].measure, scaledMeasure: dPath.metrics[j].scaledMeasure, x, y });
-        path += `${x},${y}${j == dPath.metrics.length - 1 ? " Z" : " L "}`;
-      }
-      DATA_POINTS = G_CHART_AREA.selectAll(".data-point").filter(d => dPath.category == d.category).data(points, d => d.metric);
-      DATA_POINTS.attr("fill", GRAD.fill[dPath.category] ? GRAD.fill[dPath.category] : GRAD.fillScale(dPath.category)).transition().duration(TRANS_TIME).attr("cx", d => d.x).attr("cy", d => d.y);
-      DATA_POINTS.enter().append("circle").classed("data-point", true).attr("fill", GRAD.fill[dPath.category] ? GRAD.fill[dPath.category] : GRAD.fillScale(dPath.category)).attr("cx", d => d.x).attr("cy", d => d.y).attr("r", 4).attr("fill-opacity", getOpacity(dPath.category, OPACITY.stroke))
-        .on("mouseover", (event, d) => { TOOLTIP.style("opacity", 1).html(`<table class='d3-tip-content'><tr><td>${METADATA.category}:\t</td><td>${d.category}</td></tr><tr><td>${d.metric}:\t</td><td>${METADATA.metrics[d.metric].format(d.measure)}</td></tr><tr><td>${d.metric} Scaled:\t</td><td>${SCALED_FORMAT(d.scaledMeasure * 100)}</td></tr></table>`); })
-        .on("mousemove", (event) => TOOLTIP.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px"))
-        .on("mouseout", () => TOOLTIP.style("opacity", 0))
-        .style("opacity", 0).transition().delay(TRANS_TIME - ENTER_REMOVE_TRANS_TIME).duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 1);
-      DATA_POINTS.exit().transition().duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 0).remove();
-      return path;
-  }).on("end", function(d) {
-      if (!d.entered) { d3.select(this).attr("d", d => { let path = "M "; for (let j = 0; j < d.metrics.length; j++) { path += `${RADIUS * d.metrics[j].scaledMeasure * Math.sin(j * DELTA_ANGLE)},${-RADIUS * d.metrics[j].scaledMeasure * Math.cos(j * DELTA_ANGLE)}${j == d.metrics.length - 1 ? " Z" : " L "}`; } return path; }); }
-  });
-  DATA_PATHS.enter().append("path").classed("data-path", true).attr("id", d => d.category + "-path")
-    .attr("fill", d => GRAD.stroke[d.category] ? GRAD.stroke[d.category] : GRAD.strokeScale(d.category))
-    .attr("fill-opacity", d => getOpacity(d.category, OPACITY.fill))
-    .attr("stroke", d => GRAD.stroke[d.category] ? GRAD.stroke[d.category] : GRAD.strokeScale(d.category))
-    .attr("stroke-opacity", d => getOpacity(d.category, OPACITY.stroke))
-    .attr("d", d => { let path = "M "; for (let j = 0; j < d.metrics.length; j++) { path += "0,0" + (j == d.metrics.length - 1 ? " Z" : " L "); } return path; })
-    .style("opacity", 0).transition().duration(TRANS_TIME).style("opacity", 1).attr("d", getPath);
-  DATA_PATHS.exit().each(d => { G_CHART_AREA.selectAll(".data-point").filter(p => d.category == p.category).transition().duration(TRANS_TIME).attr("cx", 0).attr("cy", 0).style("opacity", 0).remove(); }).transition().duration(TRANS_TIME).attr("d", d => { let path = "M "; for (let j = 0; j < d.metrics.length; j++) { path += "0,0" + (j == d.metrics.length - 1 ? " Z" : " L "); } return path; }).style("opacity", 0).remove();
+    MEASURE_LABELS = G_CHART_AREA.selectAll(".measure-label").data(Object.values(METADATA.metrics), d => d.metric);
+    MEASURE_LABELS.transition().duration(TRANS_TIME)
+      .attr("dx", function(d) { return d.angle == 0 || d.angle == Math.PI ? -this.getBBox().width / 2 + "px" : d.angle > 0 && d.angle < Math.PI ? "0px" : -this.getBBox().width + "px"; })
+      .attr("dy", function(d) { return d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2 ? -this.getBBox().height / 2 + "px" : d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2 ? "0px" : -this.getBBox().height + "px"; })
+      .attrTween("x", function(d) { return xTween(OLD_RADIUS + MEASURE_LABEL_PADDING, RADIUS + MEASURE_LABEL_PADDING, OLD_METADATA.metrics[d.metric].angle, d.angle); })
+      .attrTween("y", function(d) { return yTween(OLD_RADIUS + MEASURE_LABEL_PADDING, RADIUS + MEASURE_LABEL_PADDING, OLD_METADATA.metrics[d.metric].angle, d.angle); });
+    MEASURE_LABELS.enter().append("text").classed("measure-label", true).text(d => d.metric)
+      .attr("dx", function(d) { return d.angle == 0 || d.angle == Math.PI ? -this.getBBox().width / 2 + "px" : d.angle > 0 && d.angle < Math.PI ? "0px" : -this.getBBox().width + "px"; })
+      .attr("dy", function(d) { return d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2 ? -this.getBBox().height / 2 + "px" : d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2 ? "0px" : -this.getBBox().height + "px"; })
+      .attr("x", d => (RADIUS + MEASURE_LABEL_PADDING) * Math.sin(d.angle)).attr("y", d => -(RADIUS + MEASURE_LABEL_PADDING) * Math.cos(d.angle))
+      .style("opacity", 0).transition().delay(TRANS_TIME - ENTER_REMOVE_TRANS_TIME).duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 1);
+    MEASURE_LABELS.exit().transition().duration(ENTER_REMOVE_TRANS_TIME).style("opacity", 0).remove();
+
+    DATA_PATHS = G_CHART_AREA.selectAll(".data-path").data(DATA, d => d.category);
+    DATA_PATHS.transition().duration(TRANS_TIME).attr("d", getPath);
+    
+    DATA_PATHS.enter().append("path").classed("data-path", true).attr("id", d => "path-" + d.id)
+      .attr("fill", d => GRAD.stroke[d.category] ? GRAD.stroke[d.category] : GRAD.strokeScale(d.category))
+      .attr("fill-opacity", d => getOpacity(d.category, OPACITY.fill))
+      .attr("stroke", d => GRAD.stroke[d.category] ? GRAD.stroke[d.category] : GRAD.strokeScale(d.category))
+      .attr("stroke-opacity", d => getOpacity(d.category, OPACITY.stroke))
+      .attr("d", d => { let path = "M "; for (let j = 0; j < Object.keys(METADATA.metrics).length; j++) { path += "0,0" + (j == Object.keys(METADATA.metrics).length - 1 ? " Z" : " L "); } return path; })
+      .style("opacity", 0).transition().duration(TRANS_TIME).style("opacity", 1).attr("d", getPath);
+
+    DATA_PATHS.exit().each(function(d) { G_CHART_AREA.selectAll(".data-point-" + d.id).transition().duration(TRANS_TIME).attr("cx", 0).attr("cy", 0).style("opacity", 0).remove(); }).transition().duration(TRANS_TIME).attr("d", d => { let path = "M "; for (let j = 0; j < d.metrics.length; j++) { path += "0,0" + (j == d.metrics.length - 1 ? " Z" : " L "); } return path; }).style("opacity", 0).remove();
 }
 
 /******************************************************* Helper Functions *******************************************************/
-function inIframe() { 
-  // Para testes locais, forçamos a retornar 'false' para que os dados de exemplo sejam carregados.
-  return false;
-}
-
 function calculateLegendDimensions() {
-  if (!SVG) return;
+  if (!SVG || !LEG.data) return;
   let titleHeight; SVG.append("text").classed("legend-text", true).text("TEST").each(function() { titleHeight = this.getBBox().height; this.remove(); });
   const textWidths = []; let textHeight;
   SVG.selectAll(".dummyText").data(LEG.data).enter().append("text").classed("legend-text", true).text(d => d.key).style("font-weight", "bold").each(function() { textHeight = this.getBBox().height; textWidths.push(this.getComputedTextLength()); this.remove(); });
@@ -450,8 +391,9 @@ function calculateLegendDimensions() {
 }
 
 function drawLegend() {
-  SVG.selectAll(".g-legend").data([LEG.title]).enter().append("g").classed("g-legend", true);
-  LEG.groupSelection = SVG.select(".g-legend");
+  if (!LEG.data) return;
+  SVG.selectAll(".g-legend").remove(); // Limpa a legenda para redesenhar
+  LEG.groupSelection = SVG.append("g").classed("g-legend", true);
   LEG.titleDataJoin = LEG.groupSelection.selectAll(".legend-title").data([LEG.title]);
   LEG.titleDataJoin.enter().append("text").classed("legend-title", true).text(d => d).merge(LEG.titleDataJoin).attr("transform", `translate(${WIDTH/2}, 0)`);
   LEG.groupDataJoin = LEG.groupSelection.selectAll(".g-legend-entry").data(LEG.data, d => d.id).enter().append("g").classed("g-legend-entry", true).attr("id", d => `${d.id}-legend-entry`).on("click", (event, d) => legendSelect(event, d));
@@ -462,16 +404,13 @@ function drawLegend() {
 }
 
 function updateLegend() {
-  LEG.groupDataJoin = LEG.groupSelection.selectAll(".g-legend-entry").data(LEG.data, d => d.key);
-  LEG.groupDataJoin.exit().each(function() { if (d3.select(this).classed("selected")) { legendDeselectAll(); } }).transition().duration(TRANS_TIME).style("opacity", 0).remove();
-  LEG.groupDataJoin.transition().duration(TRANS_TIME).attr("transform", (d, i) => `translate(${LEG.elPos[i].x}, ${LEG.elPos[i].y})`).style("opacity", 1);
-  let enter = LEG.groupDataJoin.enter().append("g").classed("g-legend-entry", true).attr("id", d => `${d.id}-legend-entry`).attr("transform", (d, i) => `translate(${LEG.elPos[i].x}, ${LEG.elPos[i].y})`).on("click", (event, d) => legendSelect(event, d));
-  enter.append("rect").classed("legend-rect", true).attr("width", LEG.rectWidth).attr("height", LEG.rectWidth).attr("fill", d => `url(#${d.id}-gradient)`).attr("stroke", d => GRAD.stroke[d.key] ? GRAD.stroke[d.key] : GRAD.strokeScale(d.key)).style("opacity", 0).transition().duration(TRANS_TIME).style("opacity", 1);
-  enter.append("text").classed("legend-text", true).text(d => d.key).attr("x", LEG.rectWidth + LEG.rectPad).attr("y", LEG.rectWidth / 2).style("opacity", 0).transition().duration(TRANS_TIME).style("opacity", 1);
-  LEG.groupSelection.transition().duration(TRANS_TIME).attr("transform", () => `translate(0, ${HEIGHT - LEG.height})`);
+  if (!LEG.data) return;
+  drawLegend(); // Simplesmente redesenha a legenda
 }
 
 function defineGradients() {
+  if (!GRAD.data) return;
+  GRAD.defsSelection.selectAll(".gradient").remove(); // Limpa gradientes antigos
   GRAD.gradsDataJoin = GRAD.defsSelection.selectAll(".gradient").data(GRAD.data, d => d.id);
   GRAD.gradsDataJoin.enter().append("linearGradient").classed("gradient", true).attr("id", d => `${d.id}-gradient`).attr("x1", "0%").attr("x2", "100%").attr("y1", "50%").attr("y2", "50%").each(function(d) {
     d3.select(this).append("stop").attr("class", "start").attr("offset", "0%").attr("stop-color", () => GRAD.fill[d.key] ? GRAD.fill[d.key] : GRAD.fillScale(d.key)).attr("stop-opacity", 1);
@@ -480,9 +419,16 @@ function defineGradients() {
 }
 
 function calculatePadding() {
-  if (!SVG) return;
-  let height, width = 0;
-  SVG.selectAll(".dummyText").data(Object.values(METADATA.metrics)).enter().append("text").classed("measure-label", true).text(d => d.metric).each(function() { height = this.getBBox().height; width = Math.max(this.getComputedTextLength(), width); this.remove(); });
+  if (!SVG || !METADATA.metrics) return;
+  let height = 12, width = 0; // Fallback height
+  const tempText = SVG.append("text").classed("measure-label", true).style("opacity", 0);
+  Object.values(METADATA.metrics).forEach(d => {
+      tempText.text(d.metric);
+      const box = tempText.node().getBBox();
+      height = Math.max(height, box.height);
+      width = Math.max(width, box.width);
+  });
+  tempText.remove();
   SIDE_PAD = width + 2 * MEASURE_LABEL_PADDING;
   TOP_PAD = height + 2 * MEASURE_LABEL_PADDING;
 }
@@ -490,20 +436,21 @@ function calculatePadding() {
 function getOpacity(category, opacity) { return SELECTED_CATEGORY ? (category == SELECTED_CATEGORY ? opacity.focus : opacity.unfocus) : opacity.default; }
 
 function translateFormat(formatString) {
+  if (!formatString) return d3.format("");
   if (formatString.indexOf(".") == formatString.length - 1) formatString += 0;
   if (formatString.includes("DOLLAR")) return d3.format(formatString.replace("DOLLAR", "$").replace(".", ",.") + "f");
   else if (formatString.includes("COMMA")) return d3.format(formatString.replace("COMMA", "").replace(".", ",.") + "f");
   else if (formatString.includes("F")) return d3.format(formatString.replace("F", "") + "f");
   else if (formatString.includes("BEST")) return d3.format(formatString.replace("BEST", "") + "f");
   else if (formatString.includes("PERCENT")) return d3.format(formatString.replace("PERCENT", "").replace(".", ",.") + "%");
-  return d3.format(""); // Retorno padrão
+  return d3.format("");
 }
 
 function legendDeselectAll() {
   SELECTED_CATEGORY = null;
   LEG.groupSelection.selectAll(".g-legend-entry").classed("selected", false);
   d3.selectAll(".data-path").transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.fill.default).attr("stroke-opacity", OPACITY.stroke.default);
-  d3.selectAll(".data-point").transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.stroke.default);
+  d3.selectAll("[class*='data-point-']").transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.stroke.default);
 }
 
 function legendSelect(event, datum) {
@@ -511,11 +458,12 @@ function legendSelect(event, datum) {
   event.stopPropagation(); 
   
   LEG.groupSelection.selectAll(".g-legend-entry").classed("selected", false);
-  d3.selectAll(".data-path").transition("select").duration(HOVER_TRANS_TIME).filter(d => datum.key != d.category).attr("fill-opacity", OPACITY.fill.unfocus).attr("stroke-opacity", OPACITY.stroke.unfocus);
-  d3.selectAll(".data-point").transition("select").duration(HOVER_TRANS_TIME).filter(d => datum.key != d.category).attr("fill-opacity", OPACITY.stroke.unfocus);
+  d3.selectAll(".data-path").transition("select").duration(HOVER_TRANS_TIME).filter(d => d.key !== datum.key).attr("fill-opacity", OPACITY.fill.unfocus).attr("stroke-opacity", OPACITY.stroke.unfocus);
+  d3.selectAll("[class*='data-point-']").transition("select").duration(HOVER_TRANS_TIME).filter(d => d.key !== datum.key).attr("fill-opacity", OPACITY.stroke.unfocus);
+  
   d3.select(event.currentTarget).classed("selected", true); 
-  d3.select("#" + datum.key.replace(/[\W]/g, "_") + "-path").moveToFront().transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.fill.focus).attr("stroke-opacity", OPACITY.stroke.focus);
-  d3.selectAll(".data-point").filter(d => datum.key == d.category).transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.stroke.focus);
+  d3.select("#path-" + datum.id).moveToFront().transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.fill.focus).attr("stroke-opacity", OPACITY.stroke.focus);
+  d3.selectAll(".data-point-" + datum.id).transition("select").duration(HOVER_TRANS_TIME).attr("fill-opacity", OPACITY.stroke.focus);
 }
 
 function xTween(startRadius, endRadius, startAngle, endAngle) {
@@ -533,4 +481,4 @@ function yTween(startRadius, endRadius, startAngle, endAngle) {
 </script>
 
 </body>
-</html>
+</ht

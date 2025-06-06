@@ -144,7 +144,7 @@ if (typeof va === 'undefined') {
       setOnDataReceivedCallback: function(callback) {
         callback(SAMPLE_MESSAGE);
       },
-      postInstructionalMessage: function(msg) {
+      postInstructionalMessage: function(resultName, msg) {
         console.warn("Mensagem de Instrução para o SAS:", msg);
       }
     },
@@ -184,10 +184,17 @@ function onDataReceived(messageFromVA) {
     VA_MESSAGE = messageFromVA;
     VA_RESULT_NAME = messageFromVA.resultName;
 
-    if (!va.contentUtil.validateRoles(messageFromVA, ["string", "string", "number", "string"], ["number"])) {
-      va.messagingUtil.postInstructionalMessage(VA_RESULT_NAME, "D3 Radar Chart expects columns to be assigned in this order:\n 1. Category (string)\n 2. Metric Name (string)\n 3. Metric Value (number)\n 4. Metric Format (string)");
+    /*
+    // CORREÇÃO: Bloco de validação de papéis comentado para ser menos estrito,
+    // comportando-se como o exemplo original do SAS.
+    if (!va.contentUtil.validateRoles(messageFromVA, ["string", "string", "number", "string"])) {
+      va.messagingUtil.postInstructionalMessage(
+        VA_RESULT_NAME, 
+        "D3 Radar Chart expects columns to be assigned in this order:\n 1. Category (string)\n 2. Metric Name (string)\n 3. Metric Value (number)\n 4. Metric Format (string)"
+      );
       return;
     }
+    */
     
     const nestedData = Array.from(d3.group(VA_MESSAGE.data, d => d[1]), ([key, values]) => ({ key, values }));
     const numMeasures = nestedData.length;
@@ -263,7 +270,7 @@ function onDataReceived(messageFromVA) {
 
 function drawElements() {
   if (!DATA) return;
-  d3.select("#" + SVG_ID).remove();
+  d3.select("#" + SVG_ID).remove(); 
   WIDTH = document.body.clientWidth;
   HEIGHT = document.body.clientHeight;
 
@@ -328,7 +335,7 @@ function getPath(dPath) {
     })
     .on("mousemove", (event) => TOOLTIP.style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 28) + "px"))
     .on("mouseout", () => TOOLTIP.style("opacity", 0))
-    .merge(DATA_POINTS).attr("cx", d => d.x).attr("cy", d => d.y).attr("r", 4);
+    .attr("cx", d => d.x).attr("cy", d => d.y).attr("r", 4);
 
   return path;
 }
@@ -355,7 +362,7 @@ function updateElements() {
 
     MEASURE_LABELS = G_CHART_AREA.selectAll(".measure-label").data(Object.values(METADATA.metrics), d => d.metric);
     MEASURE_LABELS.transition().duration(TRANS_TIME)
-      .attr("dx", function(d) { return (d.angle == 0 || d.angle == Math.PI) ? -this.getBBox().width / 2 + "px" : d.angle > 0 && d.angle < Math.PI ? "0px" : -this.getBBox().width + "px"; })
+      .attr("dx", function(d) { return d.angle == 0 || d.angle == Math.PI ? -this.getBBox().width / 2 + "px" : d.angle > 0 && d.angle < Math.PI ? "0px" : -this.getBBox().width + "px"; })
       .attr("dy", function(d) { return d.angle == Math.PI / 2 || d.angle == 3 * Math.PI / 2 ? -this.getBBox().height / 2 + "px" : d.angle > Math.PI / 2 && d.angle < 3 * Math.PI / 2 ? "0px" : -this.getBBox().height + "px"; })
       .attr("x", d => (RADIUS + MEASURE_LABEL_PADDING) * Math.sin(d.angle))
       .attr("y", d => -(RADIUS + MEASURE_LABEL_PADDING) * Math.cos(d.angle));
